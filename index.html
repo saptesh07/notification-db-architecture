@@ -182,6 +182,9 @@ const T = {
     ["FK","channel_id","smallint","Channel (broadcast.channel.id)"],
     ["","language_code","varchar","en, hi, mr"],
     ["","message","jsonb","Title, body and params for this channel"],
+    ["","button","text","Button label shown with the message, e.g. View, Open"],
+    ["","release_date","timestamptz","When the message becomes available"],
+    ["","executed_on","timestamptz","When the send actually ran. Empty until then"],
     ["","scheduled_at","timestamptz","Empty = send now"],
     ["","created_by","bigint","User or job that created it"],
     ["","created_date","timestamptz","When the message was created"]],
@@ -192,7 +195,9 @@ const T = {
     ["","address","text","Mobile or email when there is no user yet. Empty otherwise"],
     ["","is_delivered","boolean","false on insert. true after the send succeeds"],
     ["","is_read","boolean","false on insert. true when the user opens it"],
-    ["","fail_reason","text","Empty while waiting. Set when the send fails"]]
+    ["","fail_reason","text","Empty while waiting. Set when the send fails"],
+    ["","created_date","timestamptz","When this user's row was inserted"],
+    ["","executed_date","timestamptz","When the send for this user ran. Empty until then"]]
 };
 const E = [
   ["app","bottom","broadcast.message","top","1 : N"],
