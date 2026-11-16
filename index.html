@@ -1,0 +1,251 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Broadcast Schema</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --bg:#f5f6f8; --panel:#ffffff; --fg:#1b2330; --muted:#5d6777; --line:#d8dde5; --edge:#8b96a8; --accent:#2f5d9e;
+  --g-master:#e3eefb; --g-catalog:#e6f3ec; --g-message:#fcebd9; --g-delivery:#efe9f9;
+  --g-master-ink:#1f4f8f; --g-catalog-ink:#1e6b45; --g-message-ink:#97500f; --g-delivery-ink:#5b3d99;
+  --sans:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#11151b; --panel:#191f28; --fg:#e4e8ef; --muted:#9aa4b3; --line:#2c3440; --edge:#6c7889; --accent:#7ea6e0;
+  --g-master:#1c2b40; --g-catalog:#1a3127; --g-message:#3a2a1a; --g-delivery:#2a2340;
+  --g-master-ink:#9cc0f0; --g-catalog-ink:#8fd3ae; --g-message-ink:#f0b77d; --g-delivery-ink:#c3adf0;
+  color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#11151b; --panel:#191f28; --fg:#e4e8ef; --muted:#9aa4b3; --line:#2c3440; --edge:#6c7889; --accent:#7ea6e0;
+  --g-master:#1c2b40; --g-catalog:#1a3127; --g-message:#3a2a1a; --g-delivery:#2a2340;
+  --g-master-ink:#9cc0f0; --g-catalog-ink:#8fd3ae; --g-message-ink:#f0b77d; --g-delivery-ink:#c3adf0;
+  color-scheme:dark}
+body{background:var(--bg);color:var(--fg);font-family:var(--sans);font-size:15px;line-height:1.55}
+.wrap{max-width:1180px;margin:0 auto;padding-inline:16px;padding-block:32px 48px;display:grid;gap:24px}
+h1{font-size:1.6rem;font-weight:600;margin:0;text-wrap:balance}
+.lede{color:var(--muted);margin:4px 0 0;max-width:78ch}
+h2{font-size:.78rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0 0 10px;font-weight:600}
+code{font-family:var(--mono);font-size:.85em;color:var(--accent)}
+pre{font-family:var(--mono);font-size:12.5px;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px 16px;overflow-x:auto;margin:0}
+
+.legend{display:flex;flex-wrap:wrap;gap:8px 18px;margin:0 0 12px;font-size:.85rem;color:var(--muted)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend i{width:12px;height:12px;border-radius:3px;display:inline-block;border:1px solid var(--line)}
+
+.diagram{background:var(--panel);border:1px solid var(--line);border-radius:8px;overflow-x:auto}
+.canvas{position:relative;width:1480px;padding:28px 24px 36px;display:grid;gap:78px;box-sizing:border-box}
+.canvas svg{position:absolute;inset:0;pointer-events:none;z-index:0;overflow:visible}
+.tier{position:relative;z-index:1}
+.tier-label{position:absolute;left:0;top:-22px;font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.row-flex{display:flex;justify-content:center;gap:48px}
+.row-flex .tbl{width:320px}
+.row-two{display:grid;grid-template-columns:320px 420px;justify-content:center;gap:80px;align-items:start}
+
+.tbl{background:var(--panel);border:1px solid var(--line);border-radius:6px;font-family:var(--mono);font-size:12px;overflow:hidden;transition:box-shadow .15s,border-color .15s}
+.tbl:hover,.tbl.hl{border-color:var(--accent);box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 25%,transparent)}
+.tbl h4{margin:0;padding:7px 10px;overflow-wrap:anywhere;font-size:12.5px;font-weight:500;border-bottom:1px solid var(--line)}
+.tbl[data-g="master"] h4{background:var(--g-master);color:var(--g-master-ink)}
+.tbl[data-g="catalog"] h4{background:var(--g-catalog);color:var(--g-catalog-ink)}
+.tbl[data-g="message"] h4{background:var(--g-message);color:var(--g-message-ink)}
+.tbl[data-g="delivery"] h4{background:var(--g-delivery);color:var(--g-delivery-ink)}
+.tbl ul{list-style:none;margin:0;padding:4px 0}
+.tbl li{display:grid;grid-template-columns:auto 1fr auto;gap:6px;padding:3px 10px;align-items:baseline}
+.tbl .k{font-size:9.5px;font-weight:500;color:var(--accent);min-width:34px}
+.tbl .n{color:var(--fg);overflow-wrap:anywhere}
+.tbl .ty{color:var(--muted);font-size:11px}
+.tbl .d{grid-column:2/4;font-family:var(--sans);font-size:11px;line-height:1.35;color:var(--muted)}
+.tbl ul li+li{border-top:1px dashed color-mix(in srgb,var(--line) 70%,transparent)}
+
+.edge{fill:none;stroke:var(--edge);stroke-width:1.3}
+.edge.hl{stroke:var(--accent);stroke-width:2}
+.dot{fill:var(--edge)}
+.dot.hl{fill:var(--accent)}
+.elabel rect{fill:var(--panel)}
+.elabel text{font-family:var(--mono);font-size:10.5px;fill:var(--muted)}
+.elabel.hl text{fill:var(--accent)}
+
+.groups{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}
+.g{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px 16px;min-width:0}
+.g h3{margin:0 0 6px;font-size:.95rem;font-weight:600}
+.g p{margin:0;color:var(--muted);font-size:.9rem}
+.notes{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:16px 20px}
+.notes ol{margin:0;padding-left:20px;display:grid;gap:8px}
+.notes li{max-width:88ch}
+@media (prefers-reduced-motion: reduce){.tbl{transition:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Broadcast Schema</h1>
+    <p class="lede">Six tables for PUNEZP, JIJAU and TICKLINKS. Each <code>broadcast.message</code> row is one channel (<code>channel_id</code>). <code>broadcast.delivery</code> is one row per user, inserted with <code>is_delivered</code> and <code>is_read</code> false. Old notification and broadcast tables stay unchanged.</p>
+  </header>
+
+  <section>
+    <h2>Entity relationships</h2>
+    <div class="legend">
+      <span><i style="background:var(--g-master)"></i>Masters</span>
+      <span><i style="background:var(--g-catalog)"></i>Event and tokens</span>
+      <span><i style="background:var(--g-message)"></i>Message</span>
+      <span><i style="background:var(--g-delivery)"></i>Delivery</span>
+      <span>Hover a table to highlight its links</span>
+    </div>
+    <div class="diagram">
+      <div class="canvas" id="canvas">
+        <svg id="edges" aria-hidden="true"></svg>
+
+        <div class="tier row-flex">
+          <span class="tier-label">1 · Masters</span>
+          <div class="tbl" data-t="app" data-g="master"></div>
+          <div class="tbl" data-t="broadcast.channel" data-g="master"></div>
+          <div class="tbl" data-t="broadcast.event_master" data-g="catalog"></div>
+        </div>
+
+        <div class="tier row-two">
+          <span class="tier-label">2 · Message</span>
+          <div class="tbl" data-t="broadcast.message_param" data-g="catalog"></div>
+          <div class="tbl" data-t="broadcast.message" data-g="message"></div>
+        </div>
+
+        <div class="tier row-flex">
+          <span class="tier-label">3 · Who receives it</span>
+          <div class="tbl" data-t="broadcast.delivery" data-g="delivery"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Table groups</h2>
+    <div class="groups">
+      <div class="g"><h3>Masters</h3><p><code>app</code> is PUNEZP, JIJAU or TICKLINKS. <code>broadcast.channel</code> is <code>in_app</code>, <code>push</code>, <code>email</code>, <code>sms</code>, <code>whatsapp</code>. <code>broadcast.message.channel_id</code> points here.</p></div>
+      <div class="g"><h3>Event</h3><p><code>broadcast.event_master.code</code> is the stable name, such as <code>FORGOT_PASSWORD</code> or <code>ADD_DIARY</code>. <code>broadcast.message_param</code> lists the placeholders that event allows, such as <code>$LinkId$</code>.</p></div>
+      <div class="g"><h3>Message</h3><p>One row per channel. <code>channel_id</code> says which channel. The JSON is the title, body and token values for that channel. SMS and push for the same event are two rows. <code>scheduled_at</code> empty means send now.</p></div>
+      <div class="g"><h3>Delivery</h3><p>One row per user. Insert all recipients with both flags false. The worker sets <code>is_delivered</code>. The app sets <code>is_read</code> when the user opens it.</p></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Message JSON</h2>
+    <pre>{
+  "params": { "$LinkId$": "120", "$UserName$": "Asha" },
+  "title": "New comment",
+  "body": "Asha commented on your link"
+}</pre>
+  </section>
+
+  <section class="notes">
+    <h2>Design notes</h2>
+    <ol>
+      <li>Each <code>broadcast.message</code> row has one <code>channel_id</code>. SMS and push for the same event are two message rows, each with its own delivery rows.</li>
+      <li>The JSON is the content for that channel only: <code>title</code>, <code>body</code>, and <code>params</code>. Email uses <code>title</code> as the subject.</li>
+      <li><code>broadcast.message_param</code> is the allowed list for an event. The values for one send live in <code>message.params</code>, so a deep link still has <code>$LinkId$</code>.</li>
+      <li>Creating a send: insert one message per channel, then insert one delivery row per user with <code>is_delivered = false</code> and <code>is_read = false</code>. <code>UNIQUE (broadcast_id, user_id)</code>.</li>
+      <li>Inbox is delivery rows for that <code>user_id</code> whose message <code>channel_id</code> is in-app. <code>is_read = false</code> is unread.</li>
+      <li><code>is_delivered</code> stays false until that channel's send succeeds. <code>fail_reason</code> is set when it fails, so a waiting row and a failed row are not the same.</li>
+      <li><code>address</code> is for OTP, forgot-password and contact-us when the recipient is a mobile or email and not yet a user. Leave it empty when <code>user_id</code> is set.</li>
+      <li>Provider keys (SMTP, FCM, SMS) stay in application config. They are not a table in this schema.</li>
+      <li>Old <code>notification_*</code> and <code>broadcast_*</code> tables are not altered.</li>
+    </ol>
+  </section>
+</div>
+
+<script>
+const T = {
+  app:[
+    ["PK","id","smallint","1 PUNEZP, 2 JIJAU, 3 TICKLINKS"],
+    ["UK","code","varchar","PUNEZP, JIJAU, TICKLINKS"],
+    ["","name","varchar","Display name"],
+    ["","is_active","boolean","false hides the app from new sends"]],
+  "broadcast.channel":[
+    ["PK","id","smallint","1 in_app, 2 push, 3 email, 4 sms, 5 whatsapp"],
+    ["UK","code","varchar","in_app, push, email, sms, whatsapp"],
+    ["","name","varchar","Display name"],
+    ["","is_active","boolean","false stops new sends on this channel"]],
+  "broadcast.event_master":[
+    ["PK","id","bigint identity","Event ID"],
+    ["UK","code","varchar","FORGOT_PASSWORD, ADD_DIARY, ANNOUNCEMENT"],
+    ["","name","varchar","Display name"],
+    ["","is_active","boolean","false stops new sends for this event"],
+    ["","created_by","bigint","User who added the event"],
+    ["","created_date","timestamptz","When it was added"]],
+  "broadcast.message_param":[
+    ["PK","id","bigint identity","Param ID"],
+    ["FK","event_id","bigint","Event this placeholder belongs to"],
+    ["UK","param","varchar","$LinkId$, $UserName$, $DiaryId$. Unique per event"],
+    ["","created_by","bigint","User who added it"],
+    ["","created_date","timestamptz","When it was added"]],
+  "broadcast.message":[
+    ["PK","id","bigint identity","Message ID. One row per channel"],
+    ["FK","app_id","smallint","App that sent it (app.id)"],
+    ["FK","event_id","bigint","Event (broadcast.event_master.id)"],
+    ["FK","channel_id","smallint","Channel (broadcast.channel.id)"],
+    ["","language_code","varchar","en, hi, mr"],
+    ["","message","jsonb","Title, body and params for this channel"],
+    ["","scheduled_at","timestamptz","Empty = send now"],
+    ["","created_by","bigint","User or job that created it"],
+    ["","created_date","timestamptz","When the message was created"]],
+  "broadcast.delivery":[
+    ["PK","id","bigint identity","Delivery ID. One row per user"],
+    ["FK","broadcast_id","bigint","Message (broadcast.message.id)"],
+    ["","user_id","bigint","User who will receive it"],
+    ["","address","text","Mobile or email when there is no user yet. Empty otherwise"],
+    ["","is_delivered","boolean","false on insert. true after the send succeeds"],
+    ["","is_read","boolean","false on insert. true when the user opens it"],
+    ["","fail_reason","text","Empty while waiting. Set when the send fails"]]
+};
+const E = [
+  ["app","bottom","broadcast.message","top","1 : N"],
+  ["broadcast.channel","bottom","broadcast.message","top","1 : N"],
+  ["broadcast.event_master","bottom","broadcast.message","top","1 : N"],
+  ["broadcast.event_master","bottom","broadcast.message_param","top","1 : N"],
+  ["broadcast.message","bottom","broadcast.delivery","top","1 : N"]
+];
+const esc = s => s.replace(/&/g,"&amp;").replace(/</g,"&lt;");
+document.querySelectorAll(".tbl[data-t]").forEach(el=>{
+  const t = el.dataset.t;
+  el.innerHTML = `<h4>${esc(t)}</h4><ul>` + T[t].map(([k,n,ty,d])=>`<li><span class="k">${k}</span><span class="n">${esc(n)}</span><span class="ty">${esc(ty)}</span>${d?`<span class="d">${esc(d)}</span>`:""}</li>`).join("") + `</ul>`;
+});
+const canvas = document.getElementById("canvas"), svg = document.getElementById("edges"), NS="http://www.w3.org/2000/svg";
+function anchor(name, side){
+  const r = canvas.querySelector(`[data-t="${name}"]`).getBoundingClientRect(), c = canvas.getBoundingClientRect();
+  const x0=r.left-c.left, y0=r.top-c.top;
+  return side==="top"?[x0+r.width/2,y0]:side==="bottom"?[x0+r.width/2,y0+r.height]:side==="left"?[x0,y0+r.height/2]:[x0+r.width,y0+r.height/2];
+}
+function bez(p0,p1,p2,p3,t){const u=1-t;return [0,1].map(i=>u*u*u*p0[i]+3*u*u*t*p1[i]+3*u*t*t*p2[i]+t*t*t*p3[i]);}
+function draw(){
+  svg.innerHTML="";
+  svg.setAttribute("width",canvas.scrollWidth); svg.setAttribute("height",canvas.scrollHeight);
+  E.forEach(([a,as,b,bs,label])=>{
+    const p0=anchor(a,as), p3=anchor(b,bs); let p1,p2;
+    if(as==="top"||as==="bottom"){const my=(p0[1]+p3[1])/2;p1=[p0[0],my];p2=[p3[0],my];}
+    else{const mx=(p0[0]+p3[0])/2;p1=[mx,p0[1]];p2=[mx,p3[1]];}
+    const g=document.createElementNS(NS,"g"); g.dataset.a=a; g.dataset.b=b;
+    const path=document.createElementNS(NS,"path");
+    path.setAttribute("d",`M${p0} C${p1} ${p2} ${p3}`); path.setAttribute("class","edge"); g.appendChild(path);
+    [p0,p3].forEach(p=>{const d=document.createElementNS(NS,"circle");d.setAttribute("cx",p[0]);d.setAttribute("cy",p[1]);d.setAttribute("r",2.6);d.setAttribute("class","dot");g.appendChild(d);});
+    const lp=bez(p0,p1,p2,p3,(as==="left"||as==="right")?0.5:0.72);
+    const lg=document.createElementNS(NS,"g"); lg.setAttribute("class","elabel");
+    const tx=document.createElementNS(NS,"text"); tx.setAttribute("x",lp[0]); tx.setAttribute("y",lp[1]+3.5); tx.setAttribute("text-anchor","middle"); tx.textContent=label;
+    const rc=document.createElementNS(NS,"rect"); lg.appendChild(rc); lg.appendChild(tx); g.appendChild(lg); svg.appendChild(g);
+    const bb=tx.getBBox(); rc.setAttribute("x",bb.x-3); rc.setAttribute("y",bb.y-1); rc.setAttribute("width",bb.width+6); rc.setAttribute("height",bb.height+2); rc.setAttribute("rx",3);
+  });
+}
+function hl(name,on){
+  svg.querySelectorAll("g[data-a]").forEach(g=>{
+    if(g.dataset.a===name||g.dataset.b===name){
+      g.querySelectorAll(".edge,.dot,.elabel").forEach(x=>x.classList.toggle("hl",on));
+      const other=g.dataset.a===name?g.dataset.b:g.dataset.a;
+      canvas.querySelector(`[data-t="${other}"]`).classList.toggle("hl",on);
+    }
+  });
+}
+canvas.querySelectorAll(".tbl[data-t]").forEach(el=>{
+  el.addEventListener("mouseenter",()=>hl(el.dataset.t,true));
+  el.addEventListener("mouseleave",()=>hl(el.dataset.t,false));
+});
+draw();
+if(document.fonts&&document.fonts.ready) document.fonts.ready.then(draw);
+new ResizeObserver(draw).observe(canvas);
+</script>
+</body></html>
