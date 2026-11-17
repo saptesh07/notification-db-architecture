@@ -78,7 +78,7 @@ pre{font-family:var(--mono);font-size:12.5px;background:var(--panel);border:1px 
 <div class="wrap">
   <header>
     <h1>Broadcast Schema</h1>
-    <p class="lede">Six tables for PUNEZP, JIJAU and TICKLINKS. Each <code>broadcast.message</code> row is one channel (<code>channel_id</code>). <code>broadcast.delivery</code> is one row per user, inserted with <code>is_delivered</code> and <code>is_read</code> false. Old notification and broadcast tables stay unchanged.</p>
+    <p class="lede">Six tables for PUNEZP, JIJAU and TICKLINKS. Each <code>broadcast.message</code> row is one channel (<code>channel_id</code>). <code>broadcast.delivery</code> is one row per user. <code>delivered_date</code> and <code>read_date</code> stay empty until the send succeeds and the user opens it. Old notification and broadcast tables stay unchanged.</p>
   </header>
 
   <section>
@@ -120,8 +120,8 @@ pre{font-family:var(--mono);font-size:12.5px;background:var(--panel);border:1px 
     <div class="groups">
       <div class="g"><h3>Masters</h3><p><code>app</code> is PUNEZP, JIJAU or TICKLINKS. <code>broadcast.channel</code> is <code>in_app</code>, <code>push</code>, <code>email</code>, <code>sms</code>, <code>whatsapp</code>. <code>broadcast.message.channel_id</code> points here.</p></div>
       <div class="g"><h3>Event</h3><p><code>broadcast.event_master.code</code> is the stable name, such as <code>FORGOT_PASSWORD</code> or <code>ADD_DIARY</code>. <code>broadcast.message_param</code> lists the placeholders that event allows, such as <code>$LinkId$</code>.</p></div>
-      <div class="g"><h3>Message</h3><p>One row per channel. <code>channel_id</code> says which channel. The JSON is the title, body and token values for that channel. SMS and push for the same event are two rows. <code>scheduled_at</code> empty means send now.</p></div>
-      <div class="g"><h3>Delivery</h3><p>One row per user. Insert all recipients with both flags false. The worker sets <code>is_delivered</code>. The app sets <code>is_read</code> when the user opens it.</p></div>
+      <div class="g"><h3>Message</h3><p>One row per channel. SMS and email are two rows with the same JSON (both blocks inside). Only <code>channel_id</code> differs. The worker reads <code>channel_id</code> and sends that block. <code>scheduled_at</code> empty means send now.</p></div>
+      <div class="g"><h3>Delivery</h3><p>One row per user. Insert all recipients with <code>delivered_date</code> and <code>read_date</code> empty. The worker fills <code>delivered_date</code> when the send succeeds. The app fills <code>read_date</code> when the user opens it.</p></div>
     </div>
   </section>
 
@@ -129,21 +129,20 @@ pre{font-family:var(--mono);font-size:12.5px;background:var(--panel);border:1px 
     <h2>Message JSON</h2>
     <pre>{
   "params": { "$LinkId$": "120", "$UserName$": "Asha" },
-  "title": "New comment",
-  "body": "Asha commented on your link"
+  "sms":   { "body": "Asha commented. Open: ..." },
+  "email": { "subject": "New comment", "body": "Asha commented on your link" }
 }</pre>
   </section>
 
   <section class="notes">
     <h2>Design notes</h2>
     <ol>
-      <li>Each <code>broadcast.message</code> row has one <code>channel_id</code>. SMS and push for the same event are two message rows, each with its own delivery rows.</li>
-      <li>The JSON is the content for that channel only: <code>title</code>, <code>body</code>, and <code>params</code>. Email uses <code>title</code> as the subject.</li>
+      <li>SMS and email for the same send are two <code>broadcast.message</code> rows. Both store the same JSON, with an <code>sms</code> block and an <code>email</code> block. Only <code>channel_id</code> is different. Each row has its own delivery rows.</li>
+      <li>The worker uses <code>channel_id</code> to choose the block. The SMS row sends <code>message.sms</code>. The email row sends <code>message.email</code>. The other block stays in the JSON and is not sent from that row.</li>
       <li><code>broadcast.message_param</code> is the allowed list for an event. The values for one send live in <code>message.params</code>, so a deep link still has <code>$LinkId$</code>.</li>
-      <li>Creating a send: insert one message per channel, then insert one delivery row per user with <code>is_delivered = false</code> and <code>is_read = false</code>. <code>UNIQUE (broadcast_id, user_id)</code>.</li>
-      <li>Inbox is delivery rows for that <code>user_id</code> whose message <code>channel_id</code> is in-app. <code>is_read = false</code> is unread.</li>
-      <li><code>is_delivered</code> stays false until that channel's send succeeds. <code>fail_reason</code> is set when it fails, so a waiting row and a failed row are not the same.</li>
-      <li><code>address</code> is for OTP, forgot-password and contact-us when the recipient is a mobile or email and not yet a user. Leave it empty when <code>user_id</code> is set.</li>
+      <li>Creating a send: insert one message per channel, then insert one delivery row per user with <code>delivered_date</code> and <code>read_date</code> empty. <code>UNIQUE (broadcast_id, user_id)</code>.</li>
+      <li>Inbox is delivery rows for that <code>user_id</code> whose message <code>channel_id</code> is in-app. An empty <code>read_date</code> means unread.</li>
+      <li>An empty <code>delivered_date</code> means not sent yet. <code>fail_reason</code> is set when it fails, so a waiting row and a failed row are not the same.</li>
       <li>Provider keys (SMTP, FCM, SMS) stay in application config. They are not a table in this schema.</li>
       <li>Old <code>notification_*</code> and <code>broadcast_*</code> tables are not altered.</li>
     </ol>
@@ -181,10 +180,8 @@ const T = {
     ["FK","event_id","bigint","Event (broadcast.event_master.id)"],
     ["FK","channel_id","smallint","Channel (broadcast.channel.id)"],
     ["","language_code","varchar","en, hi, mr"],
-    ["","message","jsonb","Title, body and params for this channel"],
+    ["","message","jsonb","Same JSON on each channel row. Holds every block: sms, email, push, in_app"],
     ["","button","text","Button label shown with the message, e.g. View, Open"],
-    ["","release_date","timestamptz","When the message becomes available"],
-    ["","executed_on","timestamptz","When the send actually ran. Empty until then"],
     ["","scheduled_at","timestamptz","Empty = send now"],
     ["","created_by","bigint","User or job that created it"],
     ["","created_date","timestamptz","When the message was created"]],
@@ -192,9 +189,8 @@ const T = {
     ["PK","id","bigint identity","Delivery ID. One row per user"],
     ["FK","broadcast_id","bigint","Message (broadcast.message.id)"],
     ["","user_id","bigint","User who will receive it"],
-    ["","address","text","Mobile or email when there is no user yet. Empty otherwise"],
-    ["","is_delivered","boolean","false on insert. true after the send succeeds"],
-    ["","is_read","boolean","false on insert. true when the user opens it"],
+    ["","delivered_date","timestamptz","Empty until the send succeeds. Then the time it was delivered"],
+    ["","read_date","timestamptz","Empty until the user opens it. Then the time it was read"],
     ["","fail_reason","text","Empty while waiting. Set when the send fails"],
     ["","created_date","timestamptz","When this user's row was inserted"],
     ["","executed_date","timestamptz","When the send for this user ran. Empty until then"]]
