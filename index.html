@@ -77,7 +77,7 @@ code{font-family:var(--mono);font-size:.85em;color:var(--accent)}
 <div class="wrap">
   <header>
     <h1>Broadcast Schema v2</h1>
-    <p class="lede">Common tables are used by every channel. A count of <code>broadcast.delivery</code> is how many notifications a user was sent. <code>broadcast.push_template</code> and <code>broadcast.push_device_token</code> are push only, from the push guide. Email, SMS and WhatsApp get their own extra tables later.</p>
+    <p class="lede">Common tables are used by every channel. <code>broadcast.template</code> holds the wording and the placeholder list for push, email, SMS and WhatsApp. A count of <code>broadcast.delivery</code> is how many notifications a user was sent. <code>broadcast.push_device_token</code> is the only push-only table.</p>
   </header>
 
   <section>
@@ -115,7 +115,6 @@ code{font-family:var(--mono);font-size:.85em;color:var(--accent)}
 
         <div class="tier row-flex">
           <span class="tier-label">4 · Push only</span>
-          <div class="tbl" data-t="broadcast.push_template" data-g="push"></div>
           <div class="tbl" data-t="broadcast.push_device_token" data-g="push"></div>
         </div>
       </div>
@@ -126,10 +125,10 @@ code{font-family:var(--mono);font-size:.85em;color:var(--accent)}
     <h2>Table groups</h2>
     <div class="groups">
       <div class="g"><h3>Masters</h3><p><code>app</code> is PUNEZP, JIJAU or TICKLINKS. <code>broadcast.channel</code> is push, email, SMS or WhatsApp. <code>broadcast.status</code> is the shared send status from the push guide.</p></div>
-      <div class="g"><h3>Template and message</h3><p><code>broadcast.template</code> is the wording for one channel and one version. <code>broadcast.message</code> is one send: app, channel, template and schedule. It does not store title, body or a button.</p></div>
+      <div class="g"><h3>Template and message</h3><p><code>broadcast.template</code> is the wording for every channel. Tokens such as <code>{{OrderId}}</code> sit in <code>body_template</code> and <code>data_template</code>. <code>broadcast.message</code> is one send: app, channel, template and schedule.</p></div>
       <div class="g"><h3>Delivery</h3><p>One row per user per send, for every channel. This is the place that answers how many notifications a user was sent. The push worker updates status, error and <code>sent_at</code> here.</p></div>
       <div class="g"><h3>In-app page</h3><p>One card per user, template code and calendar day. A later send the same day updates <code>placeholders</code>. The next day inserts a new row. Message and delivery still get a new row every time.</p></div>
-      <div class="g"><h3>Push only</h3><p><code>broadcast.push_template</code> holds the FCM data, web click URL and target devices. <code>broadcast.push_device_token</code> is one token per Android, iOS or web install. Email, SMS and WhatsApp do not use these tables.</p></div>
+      <div class="g"><h3>Push only</h3><p><code>broadcast.push_device_token</code> is one FCM token per Android, iOS or web install. Email, SMS and WhatsApp do not use this table. Push wording, data and click URL live on <code>broadcast.template</code>.</p></div>
     </div>
   </section>
 
@@ -138,7 +137,8 @@ code{font-family:var(--mono);font-size:.85em;color:var(--accent)}
     <ol>
       <li>How many notifications a user was sent is <code>COUNT(*)</code> from <code>broadcast.delivery</code> for that <code>user_id</code>. Channel comes from the message.</li>
       <li><code>broadcast.template</code> is unique on <code>(code, version, channel_id)</code>. The same code can have a push row now and an email row later. A used version is not edited. Insert the next version.</li>
-      <li>A push send inserts one <code>broadcast.message</code>, one <code>broadcast.delivery</code> per user, and reads <code>broadcast.push_template</code> plus active <code>broadcast.push_device_token</code> rows. The worker writes <code>status_id</code>, <code>error</code>, <code>rendered_title</code>, <code>rendered_body</code> and <code>sent_at</code> on the delivery.</li>
+      <li>The template has no placeholders column. <code>body_template</code> is text such as <code>Order #{{OrderId}} arrives by {{Date}}</code>. <code>data_template</code> is the click payload, such as <code>{"screen":"order","orderId":"{{OrderId}}"}</code>. <code>broadcast.delivery.placeholders</code> is the values for that send, such as <code>{"UserName":"Ravi","OrderId":"1234"}</code>. The worker replaces every <code>{{OrderId}}</code> in the title, body and data from that JSON.</li>
+      <li>A push send inserts one <code>broadcast.message</code> and one <code>broadcast.delivery</code> per user. The worker reads that template, fills its tokens, and loads active <code>broadcast.push_device_token</code> rows. It writes <code>status_id</code>, <code>error</code>, <code>rendered_title</code>, <code>rendered_body</code> and <code>sent_at</code> on the delivery.</li>
       <li>The in-app screen reads <code>broadcast.in_app_notification</code> only. Same day is <code>app_id</code> + <code>user_id</code> + <code>template_code</code> + <code>notice_date</code>, using the calendar day in India. A same-day update clears <code>read_date</code>.</li>
       <li><code>latest_delivery_id</code> is the last delivery that updated the card. Earlier sends that day stay on <code>broadcast.message</code> and <code>broadcast.delivery</code>.</li>
       <li><code>broadcast.status</code> codes are 1 PENDING, 2 PROCESSING, 3 SENT, 4 PARTIALLY_SENT, 5 FAILED, 6 NO_DEVICE. Partially sent and No device are used by push. Email and SMS use the same list.</li>
@@ -153,84 +153,80 @@ code{font-family:var(--mono);font-size:.85em;color:var(--accent)}
 <script>
 const T = {
   app:[
-    ["PK","id","smallint","1 PUNEZP, 2 JIJAU, 3 TICKLINKS"],
-    ["UK","code","varchar","PUNEZP, JIJAU, TICKLINKS"],
-    ["","name","varchar","Display name"],
-    ["","is_active","boolean","false hides the app from new sends"]],
+    ["PK","id","smallint","1 PUNEZP, 2 JIJAU, 3 TICKLINKS. e.g. 3"],
+    ["UK","code","varchar","PUNEZP, JIJAU, TICKLINKS. e.g. 'TICKLINKS'"],
+    ["","name","varchar","Display name. e.g. 'TickLinks'"],
+    ["","is_active","boolean","false hides the app from new sends. e.g. true"]],
   "broadcast.channel":[
-    ["PK","id","smallint","1 push, 2 email, 3 sms, 4 whatsapp"],
-    ["UK","code","varchar","push, email, sms, whatsapp"],
-    ["","name","varchar","Display name"],
-    ["","is_active","boolean","false stops new sends on this channel"]],
+    ["PK","id","smallint","1 push, 2 email, 3 sms, 4 whatsapp. e.g. 1"],
+    ["UK","code","varchar","push, email, sms, whatsapp. e.g. 'push'"],
+    ["","name","varchar","Display name. e.g. 'Push'"],
+    ["","is_active","boolean","false stops new sends on this channel. e.g. true"]],
   "broadcast.status":[
-    ["PK","id","smallint","1 PENDING, 2 PROCESSING, 3 SENT, 4 PARTIALLY_SENT, 5 FAILED, 6 NO_DEVICE"],
-    ["UK","code","varchar","Shared by every channel. Matches the push guide"],
-    ["","description","text","What that status means"]],
+    ["PK","id","smallint","1 PENDING, 2 PROCESSING, 3 SENT, 4 PARTIALLY_SENT, 5 FAILED, 6 NO_DEVICE. e.g. 1"],
+    ["UK","code","varchar","Shared by every channel. Matches the push guide. e.g. 'PENDING'"],
+    ["","description","text","What that status means. e.g. 'Waiting to be picked up by the worker'"]],
   "broadcast.template":[
-    ["PK","id","int identity","Template version id"],
-    ["FK","channel_id","smallint","Which channel this wording is for"],
-    ["UK","code","varchar","APPROVAL_REQUEST, FORM_LAUNCH. Unique with version and channel_id"],
-    ["UK","version","int","Never edit a used version. Insert the next number"],
-    ["","title_template","text","Title or subject, with placeholders such as {{UserName}}"],
-    ["","body_template","text","Body with placeholders"],
-    ["","is_active","boolean","The worker uses the latest active version for this code and channel"],
-    ["","created_at","timestamptz","When this version was added"]],
+    ["PK","id","int identity","Template version id. e.g. 15"],
+    ["FK","channel_id","smallint","Which channel this wording is for. e.g. 1 (push)"],
+    ["UK","code","varchar","APPROVAL_REQUEST, FORM_LAUNCH. Unique with version and channel_id. e.g. 'ORDER_SHIPPED'"],
+    ["UK","version","int","Never edit a used version. Insert the next number. e.g. 1"],
+    ["","title_template","text","Title. Tokens such as {{UserName}} are filled from the delivery. e.g. 'Hi {{UserName}}, your order is on the way'"],
+    ["","body_template","text","Required. e.g. 'Order #{{OrderId}} arrives by {{Date}}'"],
+    ["","data_template","jsonb","What opens on click. e.g. {\"screen\":\"order\",\"orderId\":\"{{OrderId}}\"}"],
+    ["","click_url_template","text","Push web only. HTTPS link opened on click. Empty for other channels. e.g. 'https://portal.example.com/orders/{{OrderId}}'"],
+    ["","target_platforms","text[]","Push only: android, ios, web. Empty for other channels. e.g. {android,web}"],
+    ["","is_active","boolean","The worker uses the latest active version for this code and channel. e.g. true"],
+    ["","created_at","timestamptz","When this version was added. e.g. 2026-11-20 10:00:00+05:30"]],
   "broadcast.message":[
-    ["PK","id","bigint identity","One send on one channel"],
-    ["FK","app_id","smallint","App that sent it (app.id)"],
-    ["FK","channel_id","smallint","push, email, sms or whatsapp"],
-    ["FK","template_id","int","Wording used (broadcast.template.id)"],
-    ["","scheduled_at","timestamptz","Empty = send now"],
-    ["","created_by","bigint","User or job that created it"],
-    ["","created_date","timestamptz","When the send was created"]],
+    ["PK","id","bigint identity","One send on one channel. e.g. 101"],
+    ["FK","app_id","smallint","App that sent it (app.id). e.g. 3"],
+    ["FK","channel_id","smallint","push, email, sms or whatsapp. e.g. 1"],
+    ["FK","template_id","int","Wording used (broadcast.template.id). e.g. 15"],
+    ["","scheduled_at","timestamptz","Empty = send now. e.g. null, or 2026-11-21 07:00:00+05:30"],
+    ["","created_by","bigint","User or job that created it. e.g. 4821"],
+    ["","created_date","timestamptz","When the send was created. e.g. 2026-11-20 10:05:00+05:30"]],
   "broadcast.delivery":[
-    ["PK","id","bigint identity","One row per user per send. The user total is a count of this table"],
-    ["FK","message_id","bigint","Send (broadcast.message.id)"],
-    ["FK","status_id","smallint","broadcast.status.id. Starts at 1 PENDING"],
-    ["","user_id","bigint","User this notification is for"],
-    ["","placeholders","jsonb","Values for this one send, e.g. count 1"],
-    ["","rendered_title","text","Title after placeholders are filled. Set when the worker sends"],
-    ["","rendered_body","text","Body after placeholders are filled"],
-    ["","attempts","int","How many times a worker has picked it up"],
-    ["","error","text","Last failure. Empty when it succeeds"],
-    ["","picked_at","timestamptz","When a worker took it. Empty while pending"],
-    ["","sent_at","timestamptz","When the channel accepted it. Empty until then"],
-    ["","created_at","timestamptz","When the row was queued"]],
+    ["PK","id","bigint identity","One row per user per send. The user total is a count of this table. e.g. 9001"],
+    ["FK","message_id","bigint","Send (broadcast.message.id). e.g. 101"],
+    ["FK","status_id","smallint","broadcast.status.id. Starts at 1 PENDING. e.g. 3 after FCM accepts it"],
+    ["","user_id","bigint","User this notification is for. e.g. 4821"],
+    ["","placeholders","jsonb","Required. Values for this send. e.g. {\"UserName\":\"Ravi\",\"OrderId\":\"1234\"}"],
+    ["","rendered_title","text","Title after placeholders are filled. Set when the worker sends. e.g. 'Hi Ravi, your order is on the way'"],
+    ["","rendered_body","text","Body after placeholders are filled. e.g. 'Order #1234 arrives by 21 Nov'"],
+    ["","attempts","int","How many times a worker has picked it up. e.g. 1"],
+    ["","error","text","Last failure. Empty when it succeeds. e.g. null, or 'Invalid token'"],
+    ["","picked_at","timestamptz","When a worker took it. Empty while pending. e.g. 2026-11-20 10:05:02+05:30"],
+    ["","sent_at","timestamptz","When the channel accepted it. Empty until then. e.g. 2026-11-20 10:05:03+05:30"],
+    ["","created_at","timestamptz","When the row was queued. e.g. 2026-11-20 10:05:00+05:30"]],
   "broadcast.in_app_notification":[
-    ["PK","id","bigint identity","One card on the in-app notifications page"],
-    ["FK","app_id","smallint","App the user is logged into"],
-    ["","user_id","bigint","User who sees this card"],
-    ["UK","template_code","varchar","Same code across channels. Unique with user, app and notice_date"],
-    ["UK","notice_date","date","Calendar day in India. Next day is a new row"],
-    ["","placeholders","jsonb","Rolled up for this day. Count goes from 1 to 2 on the next send"],
-    ["FK","latest_delivery_id","bigint","Last delivery that updated this card"],
-    ["","read_date","timestamptz","Empty until opened. Cleared when the same-day count changes"],
-    ["","created_date","timestamptz","First send of that day"],
-    ["","updated_date","timestamptz","Last time placeholders were updated"]],
-  "broadcast.push_template":[
-    ["PK","id","int identity","Push-only extra for one template row"],
-    ["FK","template_id","int","broadcast.template.id where channel is push. One extra row"],
-    ["","data_template","jsonb","FCM data, e.g. screen and record id, with placeholders"],
-    ["","click_url_template","text","Web push only. HTTPS link opened on click"],
-    ["","target_platforms","text[]","android, ios, web. The worker filters device tokens with this"]],
+    ["PK","id","bigint identity","One card on the in-app notifications page. e.g. 50"],
+    ["FK","app_id","smallint","App the user is logged into. e.g. 3"],
+    ["","user_id","bigint","User who sees this card. e.g. 4821"],
+    ["UK","template_code","varchar","Same code across channels. Unique with user, app and notice_date. e.g. 'ORDER_SHIPPED'"],
+    ["UK","notice_date","date","Calendar day in India. Next day is a new row. e.g. 2026-11-20"],
+    ["","placeholders","jsonb","Rolled up for this day. Count goes from 1 to 2 on the next send. e.g. {\"UserName\":\"Ravi\",\"OrderId\":\"1234\"}"],
+    ["FK","latest_delivery_id","bigint","Last delivery that updated this card. e.g. 9001"],
+    ["","read_date","timestamptz","Empty until opened. Cleared when the same-day count changes. e.g. null, or 2026-11-20 11:00:00+05:30"],
+    ["","created_date","timestamptz","First send of that day. e.g. 2026-11-20 10:05:00+05:30"],
+    ["","updated_date","timestamptz","Last time placeholders were updated. e.g. 2026-11-20 16:40:00+05:30"]],
   "broadcast.push_device_token":[
-    ["PK","id","bigint identity","One row per app install or browser"],
-    ["","user_id","bigint","User logged in on this device"],
-    ["","access_token_guid","uuid","Login session. Logout sets is_active false"],
-    ["UK","fcm_token","text","FCM device token"],
-    ["","device_platform","varchar","android, ios or web. Not the broadcast channel"],
-    ["","app_version","varchar","App version at registration"],
-    ["","user_agent","text","Web only: laptop or mobile browser"],
-    ["","is_active","boolean","false after logout, a dead token, or 60 days unseen"],
-    ["","created_at","timestamptz","When the token was first saved"],
-    ["","last_seen_at","timestamptz","Last time the app or site refreshed it"]]
+    ["PK","id","bigint identity","One row per app install or browser. e.g. 77"],
+    ["","user_id","bigint","User logged in on this device. e.g. 4821"],
+    ["","access_token_guid","uuid","Login session. Logout sets is_active false. e.g. '3f2a9c1e-7b04-4d6a-9e11-0c5b8a2d4f60'"],
+    ["UK","fcm_token","text","FCM device token. e.g. 'dK3xY7...long-fcm-token'"],
+    ["","device_platform","varchar","android, ios or web. Not the broadcast channel. e.g. 'android'"],
+    ["","app_version","varchar","App version at registration. e.g. '4.2.1'"],
+    ["","user_agent","text","Web only: laptop or mobile browser. e.g. 'Mozilla/5.0 (Linux; Android 14)'"],
+    ["","is_active","boolean","false after logout, a dead token, or 60 days unseen. e.g. true"],
+    ["","created_at","timestamptz","When the token was first saved. e.g. 2026-11-01 09:12:00+05:30"],
+    ["","last_seen_at","timestamptz","Last time the app or site refreshed it. e.g. 2026-11-20 10:04:00+05:30"]]
 };
 const E = [
   ["app","bottom","broadcast.message","top","1 : N"],
   ["broadcast.channel","bottom","broadcast.template","top","1 : N"],
   ["broadcast.channel","bottom","broadcast.message","top","1 : N"],
   ["broadcast.template","right","broadcast.message","left","1 : N"],
-  ["broadcast.template","bottom","broadcast.push_template","top","1 : 1"],
   ["broadcast.template","bottom","broadcast.in_app_notification","top","code"],
   ["broadcast.message","bottom","broadcast.delivery","top","1 : N"],
   ["broadcast.status","bottom","broadcast.delivery","top","1 : N"],
