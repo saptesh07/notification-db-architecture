@@ -1,24 +1,24 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Broadcast Schema</title>
+<title>Broadcast Schema v2</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
 :root{
   --bg:#f5f6f8; --panel:#ffffff; --fg:#1b2330; --muted:#5d6777; --line:#d8dde5; --edge:#8b96a8; --accent:#2f5d9e;
-  --g-master:#e3eefb; --g-catalog:#e6f3ec; --g-message:#fcebd9; --g-delivery:#efe9f9;
-  --g-master-ink:#1f4f8f; --g-catalog-ink:#1e6b45; --g-message-ink:#97500f; --g-delivery-ink:#5b3d99;
+  --g-master:#e3eefb; --g-catalog:#e6f3ec; --g-message:#fcebd9; --g-delivery:#efe9f9; --g-push:#e0f2f4;
+  --g-master-ink:#1f4f8f; --g-catalog-ink:#1e6b45; --g-message-ink:#97500f; --g-delivery-ink:#5b3d99; --g-push-ink:#126b75;
   --sans:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
   --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
 }
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
   --bg:#11151b; --panel:#191f28; --fg:#e4e8ef; --muted:#9aa4b3; --line:#2c3440; --edge:#6c7889; --accent:#7ea6e0;
-  --g-master:#1c2b40; --g-catalog:#1a3127; --g-message:#3a2a1a; --g-delivery:#2a2340;
-  --g-master-ink:#9cc0f0; --g-catalog-ink:#8fd3ae; --g-message-ink:#f0b77d; --g-delivery-ink:#c3adf0;
+  --g-master:#1c2b40; --g-catalog:#1a3127; --g-message:#3a2a1a; --g-delivery:#2a2340; --g-push:#173337;
+  --g-master-ink:#9cc0f0; --g-catalog-ink:#8fd3ae; --g-message-ink:#f0b77d; --g-delivery-ink:#c3adf0; --g-push-ink:#86d3dc;
   color-scheme:dark}}
 :root[data-theme="dark"]{
   --bg:#11151b; --panel:#191f28; --fg:#e4e8ef; --muted:#9aa4b3; --line:#2c3440; --edge:#6c7889; --accent:#7ea6e0;
-  --g-master:#1c2b40; --g-catalog:#1a3127; --g-message:#3a2a1a; --g-delivery:#2a2340;
-  --g-master-ink:#9cc0f0; --g-catalog-ink:#8fd3ae; --g-message-ink:#f0b77d; --g-delivery-ink:#c3adf0;
+  --g-master:#1c2b40; --g-catalog:#1a3127; --g-message:#3a2a1a; --g-delivery:#2a2340; --g-push:#173337;
+  --g-master-ink:#9cc0f0; --g-catalog-ink:#8fd3ae; --g-message-ink:#f0b77d; --g-delivery-ink:#c3adf0; --g-push-ink:#86d3dc;
   color-scheme:dark}
 body{background:var(--bg);color:var(--fg);font-family:var(--sans);font-size:15px;line-height:1.55}
 .wrap{max-width:1180px;margin:0 auto;padding-inline:16px;padding-block:32px 48px;display:grid;gap:24px}
@@ -26,20 +26,18 @@ h1{font-size:1.6rem;font-weight:600;margin:0;text-wrap:balance}
 .lede{color:var(--muted);margin:4px 0 0;max-width:78ch}
 h2{font-size:.78rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0 0 10px;font-weight:600}
 code{font-family:var(--mono);font-size:.85em;color:var(--accent)}
-pre{font-family:var(--mono);font-size:12.5px;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px 16px;overflow-x:auto;margin:0}
 
 .legend{display:flex;flex-wrap:wrap;gap:8px 18px;margin:0 0 12px;font-size:.85rem;color:var(--muted)}
 .legend span{display:inline-flex;align-items:center;gap:6px}
 .legend i{width:12px;height:12px;border-radius:3px;display:inline-block;border:1px solid var(--line)}
 
 .diagram{background:var(--panel);border:1px solid var(--line);border-radius:8px;overflow-x:auto}
-.canvas{position:relative;width:1480px;padding:28px 24px 36px;display:grid;gap:78px;box-sizing:border-box}
+.canvas{position:relative;width:1680px;padding:28px 24px 36px;display:grid;gap:78px;box-sizing:border-box}
 .canvas svg{position:absolute;inset:0;pointer-events:none;z-index:0;overflow:visible}
 .tier{position:relative;z-index:1}
 .tier-label{position:absolute;left:0;top:-22px;font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
-.row-flex{display:flex;justify-content:center;gap:48px}
-.row-flex .tbl{width:320px}
-.row-two{display:grid;grid-template-columns:320px 420px;justify-content:center;gap:80px;align-items:start}
+.row-flex{display:flex;justify-content:center;gap:40px}
+.row-flex .tbl{width:340px}
 
 .tbl{background:var(--panel);border:1px solid var(--line);border-radius:6px;font-family:var(--mono);font-size:12px;overflow:hidden;transition:box-shadow .15s,border-color .15s}
 .tbl:hover,.tbl.hl{border-color:var(--accent);box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 25%,transparent)}
@@ -48,6 +46,7 @@ pre{font-family:var(--mono);font-size:12.5px;background:var(--panel);border:1px 
 .tbl[data-g="catalog"] h4{background:var(--g-catalog);color:var(--g-catalog-ink)}
 .tbl[data-g="message"] h4{background:var(--g-message);color:var(--g-message-ink)}
 .tbl[data-g="delivery"] h4{background:var(--g-delivery);color:var(--g-delivery-ink)}
+.tbl[data-g="push"] h4{background:var(--g-push);color:var(--g-push-ink)}
 .tbl ul{list-style:none;margin:0;padding:4px 0}
 .tbl li{display:grid;grid-template-columns:auto 1fr auto;gap:6px;padding:3px 10px;align-items:baseline}
 .tbl .k{font-size:9.5px;font-weight:500;color:var(--accent);min-width:34px}
@@ -77,17 +76,18 @@ pre{font-family:var(--mono);font-size:12.5px;background:var(--panel);border:1px 
 <body>
 <div class="wrap">
   <header>
-    <h1>Broadcast Schema</h1>
-    <p class="lede">Six tables for PUNEZP, JIJAU and TICKLINKS. Each <code>broadcast.message</code> row is one channel (<code>channel_id</code>). <code>broadcast.delivery</code> is one row per user. <code>delivered_date</code> and <code>read_date</code> stay empty until the send succeeds and the user opens it. Old notification and broadcast tables stay unchanged.</p>
+    <h1>Broadcast Schema v2</h1>
+    <p class="lede">Common tables are used by every channel. A count of <code>broadcast.delivery</code> is how many notifications a user was sent. <code>broadcast.push_template</code> and <code>broadcast.push_device_token</code> are push only, from the push guide. Email, SMS and WhatsApp get their own extra tables later.</p>
   </header>
 
   <section>
     <h2>Entity relationships</h2>
     <div class="legend">
       <span><i style="background:var(--g-master)"></i>Masters</span>
-      <span><i style="background:var(--g-catalog)"></i>Event and tokens</span>
+      <span><i style="background:var(--g-catalog)"></i>Template and in-app</span>
       <span><i style="background:var(--g-message)"></i>Message</span>
       <span><i style="background:var(--g-delivery)"></i>Delivery</span>
+      <span><i style="background:var(--g-push)"></i>Push only</span>
       <span>Hover a table to highlight its links</span>
     </div>
     <div class="diagram">
@@ -98,18 +98,25 @@ pre{font-family:var(--mono);font-size:12.5px;background:var(--panel);border:1px 
           <span class="tier-label">1 · Masters</span>
           <div class="tbl" data-t="app" data-g="master"></div>
           <div class="tbl" data-t="broadcast.channel" data-g="master"></div>
-          <div class="tbl" data-t="broadcast.event_master" data-g="catalog"></div>
+          <div class="tbl" data-t="broadcast.status" data-g="master"></div>
         </div>
 
-        <div class="tier row-two">
-          <span class="tier-label">2 · Message</span>
-          <div class="tbl" data-t="broadcast.message_param" data-g="catalog"></div>
+        <div class="tier row-flex">
+          <span class="tier-label">2 · Shared send</span>
+          <div class="tbl" data-t="broadcast.template" data-g="catalog"></div>
           <div class="tbl" data-t="broadcast.message" data-g="message"></div>
         </div>
 
         <div class="tier row-flex">
-          <span class="tier-label">3 · Who receives it</span>
+          <span class="tier-label">3 · Per user</span>
           <div class="tbl" data-t="broadcast.delivery" data-g="delivery"></div>
+          <div class="tbl" data-t="broadcast.in_app_notification" data-g="catalog"></div>
+        </div>
+
+        <div class="tier row-flex">
+          <span class="tier-label">4 · Push only</span>
+          <div class="tbl" data-t="broadcast.push_template" data-g="push"></div>
+          <div class="tbl" data-t="broadcast.push_device_token" data-g="push"></div>
         </div>
       </div>
     </div>
@@ -118,33 +125,27 @@ pre{font-family:var(--mono);font-size:12.5px;background:var(--panel);border:1px 
   <section>
     <h2>Table groups</h2>
     <div class="groups">
-      <div class="g"><h3>Masters</h3><p><code>app</code> is PUNEZP, JIJAU or TICKLINKS. <code>broadcast.channel</code> is <code>in_app</code>, <code>push</code>, <code>email</code>, <code>sms</code>, <code>whatsapp</code>. <code>broadcast.message.channel_id</code> points here.</p></div>
-      <div class="g"><h3>Event</h3><p><code>broadcast.event_master.code</code> is the stable name, such as <code>FORGOT_PASSWORD</code> or <code>ADD_DIARY</code>. <code>broadcast.message_param</code> lists the placeholders that event allows, such as <code>$LinkId$</code>.</p></div>
-      <div class="g"><h3>Message</h3><p>One row per channel. SMS and email are two rows with the same JSON (both blocks inside). Only <code>channel_id</code> differs. The worker reads <code>channel_id</code> and sends that block. <code>scheduled_at</code> empty means send now.</p></div>
-      <div class="g"><h3>Delivery</h3><p>One row per user. Insert all recipients with <code>delivered_date</code> and <code>read_date</code> empty. The worker fills <code>delivered_date</code> when the send succeeds. The app fills <code>read_date</code> when the user opens it.</p></div>
+      <div class="g"><h3>Masters</h3><p><code>app</code> is PUNEZP, JIJAU or TICKLINKS. <code>broadcast.channel</code> is push, email, SMS or WhatsApp. <code>broadcast.status</code> is the shared send status from the push guide.</p></div>
+      <div class="g"><h3>Template and message</h3><p><code>broadcast.template</code> is the wording for one channel and one version. <code>broadcast.message</code> is one send: app, channel, template and schedule. It does not store title, body or a button.</p></div>
+      <div class="g"><h3>Delivery</h3><p>One row per user per send, for every channel. This is the place that answers how many notifications a user was sent. The push worker updates status, error and <code>sent_at</code> here.</p></div>
+      <div class="g"><h3>In-app page</h3><p>One card per user, template code and calendar day. A later send the same day updates <code>placeholders</code>. The next day inserts a new row. Message and delivery still get a new row every time.</p></div>
+      <div class="g"><h3>Push only</h3><p><code>broadcast.push_template</code> holds the FCM data, web click URL and target devices. <code>broadcast.push_device_token</code> is one token per Android, iOS or web install. Email, SMS and WhatsApp do not use these tables.</p></div>
     </div>
-  </section>
-
-  <section>
-    <h2>Message JSON</h2>
-    <pre>{
-  "params": { "$LinkId$": "120", "$UserName$": "Asha" },
-  "sms":   { "body": "Asha commented. Open: ..." },
-  "email": { "subject": "New comment", "body": "Asha commented on your link" }
-}</pre>
   </section>
 
   <section class="notes">
     <h2>Design notes</h2>
     <ol>
-      <li>SMS and email for the same send are two <code>broadcast.message</code> rows. Both store the same JSON, with an <code>sms</code> block and an <code>email</code> block. Only <code>channel_id</code> is different. Each row has its own delivery rows.</li>
-      <li>The worker uses <code>channel_id</code> to choose the block. The SMS row sends <code>message.sms</code>. The email row sends <code>message.email</code>. The other block stays in the JSON and is not sent from that row.</li>
-      <li><code>broadcast.message_param</code> is the allowed list for an event. The values for one send live in <code>message.params</code>, so a deep link still has <code>$LinkId$</code>.</li>
-      <li>Creating a send: insert one message per channel, then insert one delivery row per user with <code>delivered_date</code> and <code>read_date</code> empty. <code>UNIQUE (broadcast_id, user_id)</code>.</li>
-      <li>Inbox is delivery rows for that <code>user_id</code> whose message <code>channel_id</code> is in-app. An empty <code>read_date</code> means unread.</li>
-      <li>An empty <code>delivered_date</code> means not sent yet. <code>fail_reason</code> is set when it fails, so a waiting row and a failed row are not the same.</li>
-      <li>Provider keys (SMTP, FCM, SMS) stay in application config. They are not a table in this schema.</li>
-      <li>Old <code>notification_*</code> and <code>broadcast_*</code> tables are not altered.</li>
+      <li>How many notifications a user was sent is <code>COUNT(*)</code> from <code>broadcast.delivery</code> for that <code>user_id</code>. Channel comes from the message.</li>
+      <li><code>broadcast.template</code> is unique on <code>(code, version, channel_id)</code>. The same code can have a push row now and an email row later. A used version is not edited. Insert the next version.</li>
+      <li>A push send inserts one <code>broadcast.message</code>, one <code>broadcast.delivery</code> per user, and reads <code>broadcast.push_template</code> plus active <code>broadcast.push_device_token</code> rows. The worker writes <code>status_id</code>, <code>error</code>, <code>rendered_title</code>, <code>rendered_body</code> and <code>sent_at</code> on the delivery.</li>
+      <li>The in-app screen reads <code>broadcast.in_app_notification</code> only. Same day is <code>app_id</code> + <code>user_id</code> + <code>template_code</code> + <code>notice_date</code>, using the calendar day in India. A same-day update clears <code>read_date</code>.</li>
+      <li><code>latest_delivery_id</code> is the last delivery that updated the card. Earlier sends that day stay on <code>broadcast.message</code> and <code>broadcast.delivery</code>.</li>
+      <li><code>broadcast.status</code> codes are 1 PENDING, 2 PROCESSING, 3 SENT, 4 PARTIALLY_SENT, 5 FAILED, 6 NO_DEVICE. Partially sent and No device are used by push. Email and SMS use the same list.</li>
+      <li><code>device_platform</code> on the token is android, ios or web. It is not <code>broadcast.channel</code>.</li>
+      <li>There is no per-device result table yet. Several devices for one user are one delivery, with status Partially sent or No device, as in the push guide.</li>
+      <li>Email, SMS and WhatsApp will add their own extra tables later. They still insert <code>broadcast.message</code> and <code>broadcast.delivery</code>.</li>
+      <li>Old <code>notification_*</code> and <code>broadcast_*</code> tables are not altered. v1 of this diagram is unchanged.</li>
     </ol>
   </section>
 </div>
@@ -157,50 +158,84 @@ const T = {
     ["","name","varchar","Display name"],
     ["","is_active","boolean","false hides the app from new sends"]],
   "broadcast.channel":[
-    ["PK","id","smallint","1 in_app, 2 push, 3 email, 4 sms, 5 whatsapp"],
-    ["UK","code","varchar","in_app, push, email, sms, whatsapp"],
+    ["PK","id","smallint","1 push, 2 email, 3 sms, 4 whatsapp"],
+    ["UK","code","varchar","push, email, sms, whatsapp"],
     ["","name","varchar","Display name"],
     ["","is_active","boolean","false stops new sends on this channel"]],
-  "broadcast.event_master":[
-    ["PK","id","bigint identity","Event ID"],
-    ["UK","code","varchar","FORGOT_PASSWORD, ADD_DIARY, ANNOUNCEMENT"],
-    ["","name","varchar","Display name"],
-    ["","is_active","boolean","false stops new sends for this event"],
-    ["","created_by","bigint","User who added the event"],
-    ["","created_date","timestamptz","When it was added"]],
-  "broadcast.message_param":[
-    ["PK","id","bigint identity","Param ID"],
-    ["FK","event_id","bigint","Event this placeholder belongs to"],
-    ["UK","param","varchar","$LinkId$, $UserName$, $DiaryId$. Unique per event"],
-    ["","created_by","bigint","User who added it"],
-    ["","created_date","timestamptz","When it was added"]],
+  "broadcast.status":[
+    ["PK","id","smallint","1 PENDING, 2 PROCESSING, 3 SENT, 4 PARTIALLY_SENT, 5 FAILED, 6 NO_DEVICE"],
+    ["UK","code","varchar","Shared by every channel. Matches the push guide"],
+    ["","description","text","What that status means"]],
+  "broadcast.template":[
+    ["PK","id","int identity","Template version id"],
+    ["FK","channel_id","smallint","Which channel this wording is for"],
+    ["UK","code","varchar","APPROVAL_REQUEST, FORM_LAUNCH. Unique with version and channel_id"],
+    ["UK","version","int","Never edit a used version. Insert the next number"],
+    ["","title_template","text","Title or subject, with placeholders such as {{UserName}}"],
+    ["","body_template","text","Body with placeholders"],
+    ["","is_active","boolean","The worker uses the latest active version for this code and channel"],
+    ["","created_at","timestamptz","When this version was added"]],
   "broadcast.message":[
-    ["PK","id","bigint identity","Message ID. One row per channel"],
+    ["PK","id","bigint identity","One send on one channel"],
     ["FK","app_id","smallint","App that sent it (app.id)"],
-    ["FK","event_id","bigint","Event (broadcast.event_master.id)"],
-    ["FK","channel_id","smallint","Channel (broadcast.channel.id)"],
-    ["","language_code","varchar","en, hi, mr"],
-    ["","message","jsonb","Same JSON on each channel row. Holds every block: sms, email, push, in_app"],
-    ["","button","text","Button label shown with the message, e.g. View, Open"],
+    ["FK","channel_id","smallint","push, email, sms or whatsapp"],
+    ["FK","template_id","int","Wording used (broadcast.template.id)"],
     ["","scheduled_at","timestamptz","Empty = send now"],
     ["","created_by","bigint","User or job that created it"],
-    ["","created_date","timestamptz","When the message was created"]],
+    ["","created_date","timestamptz","When the send was created"]],
   "broadcast.delivery":[
-    ["PK","id","bigint identity","Delivery ID. One row per user"],
-    ["FK","broadcast_id","bigint","Message (broadcast.message.id)"],
-    ["","user_id","bigint","User who will receive it"],
-    ["","delivered_date","timestamptz","Empty until the send succeeds. Then the time it was delivered"],
-    ["","read_date","timestamptz","Empty until the user opens it. Then the time it was read"],
-    ["","fail_reason","text","Empty while waiting. Set when the send fails"],
-    ["","created_date","timestamptz","When this user's row was inserted"],
-    ["","executed_date","timestamptz","When the send for this user ran. Empty until then"]]
+    ["PK","id","bigint identity","One row per user per send. The user total is a count of this table"],
+    ["FK","message_id","bigint","Send (broadcast.message.id)"],
+    ["FK","status_id","smallint","broadcast.status.id. Starts at 1 PENDING"],
+    ["","user_id","bigint","User this notification is for"],
+    ["","placeholders","jsonb","Values for this one send, e.g. count 1"],
+    ["","rendered_title","text","Title after placeholders are filled. Set when the worker sends"],
+    ["","rendered_body","text","Body after placeholders are filled"],
+    ["","attempts","int","How many times a worker has picked it up"],
+    ["","error","text","Last failure. Empty when it succeeds"],
+    ["","picked_at","timestamptz","When a worker took it. Empty while pending"],
+    ["","sent_at","timestamptz","When the channel accepted it. Empty until then"],
+    ["","created_at","timestamptz","When the row was queued"]],
+  "broadcast.in_app_notification":[
+    ["PK","id","bigint identity","One card on the in-app notifications page"],
+    ["FK","app_id","smallint","App the user is logged into"],
+    ["","user_id","bigint","User who sees this card"],
+    ["UK","template_code","varchar","Same code across channels. Unique with user, app and notice_date"],
+    ["UK","notice_date","date","Calendar day in India. Next day is a new row"],
+    ["","placeholders","jsonb","Rolled up for this day. Count goes from 1 to 2 on the next send"],
+    ["FK","latest_delivery_id","bigint","Last delivery that updated this card"],
+    ["","read_date","timestamptz","Empty until opened. Cleared when the same-day count changes"],
+    ["","created_date","timestamptz","First send of that day"],
+    ["","updated_date","timestamptz","Last time placeholders were updated"]],
+  "broadcast.push_template":[
+    ["PK","id","int identity","Push-only extra for one template row"],
+    ["FK","template_id","int","broadcast.template.id where channel is push. One extra row"],
+    ["","data_template","jsonb","FCM data, e.g. screen and record id, with placeholders"],
+    ["","click_url_template","text","Web push only. HTTPS link opened on click"],
+    ["","target_platforms","text[]","android, ios, web. The worker filters device tokens with this"]],
+  "broadcast.push_device_token":[
+    ["PK","id","bigint identity","One row per app install or browser"],
+    ["","user_id","bigint","User logged in on this device"],
+    ["","access_token_guid","uuid","Login session. Logout sets is_active false"],
+    ["UK","fcm_token","text","FCM device token"],
+    ["","device_platform","varchar","android, ios or web. Not the broadcast channel"],
+    ["","app_version","varchar","App version at registration"],
+    ["","user_agent","text","Web only: laptop or mobile browser"],
+    ["","is_active","boolean","false after logout, a dead token, or 60 days unseen"],
+    ["","created_at","timestamptz","When the token was first saved"],
+    ["","last_seen_at","timestamptz","Last time the app or site refreshed it"]]
 };
 const E = [
   ["app","bottom","broadcast.message","top","1 : N"],
+  ["broadcast.channel","bottom","broadcast.template","top","1 : N"],
   ["broadcast.channel","bottom","broadcast.message","top","1 : N"],
-  ["broadcast.event_master","bottom","broadcast.message","top","1 : N"],
-  ["broadcast.event_master","bottom","broadcast.message_param","top","1 : N"],
-  ["broadcast.message","bottom","broadcast.delivery","top","1 : N"]
+  ["broadcast.template","right","broadcast.message","left","1 : N"],
+  ["broadcast.template","bottom","broadcast.push_template","top","1 : 1"],
+  ["broadcast.template","bottom","broadcast.in_app_notification","top","code"],
+  ["broadcast.message","bottom","broadcast.delivery","top","1 : N"],
+  ["broadcast.status","bottom","broadcast.delivery","top","1 : N"],
+  ["broadcast.delivery","right","broadcast.in_app_notification","left","latest"],
+  ["broadcast.push_device_token","top","broadcast.delivery","bottom","user devices"]
 ];
 const esc = s => s.replace(/&/g,"&amp;").replace(/</g,"&lt;");
 document.querySelectorAll(".tbl[data-t]").forEach(el=>{
